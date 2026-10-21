@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#166c59">
+  <meta name="description" content="A private, local-only return-to-office planner. Explore your schedule against the three-days, eight-of-twelve-weeks rule.">
+  <title>Office / Away - RTO compliance planner</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="logic.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#calendar">Skip to calendar</a>
+  <div class="page">
+    <header class="page-header">
+      <a class="brand" href="./" aria-label="Office / Away home">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M2 21h20M16 10h4v11M8 7h4M8 11h4M8 15h4M9 21v-3h2v3"/></svg></span>
+        <span>office<span class="brand-slash"> / </span>away<span class="brand-sub">RTO COMPLIANCE PLANNER</span></span>
+      </a>
+      <span class="privacy-pill"><span class="tiny-dot"></span> Local only. Yours to plan.</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><p class="eyebrow">A LITTLE STRUCTURE. A LOT OF FLEXIBILITY.</p>
+          <h1 id="page-title">Find your office / life balance.</h1>
+          <p>Plan your office days. Make room for time away. Know where you stand.</p></div>
+        <button class="text-button how-button" id="show-rules" type="button">How the rule works <span aria-hidden="true">&#8599;</span></button>
+      </section>
+
+      <div class="dashboard-host" id="dashboard-host">
+        <section class="dashboard" id="dashboard" aria-label="Compliance dashboard">
+          <div class="dashboard-top"><span class="eyebrow">ENTIRE DISPLAYED CALENDAR</span><span class="estimate-label">Schedule-based estimate</span></div>
+          <div class="dashboard-body">
+            <div class="status-block">
+              <span class="status-label">Every visible week checked</span>
+              <strong class="status-title" id="compliance-status">Calculating</strong>
+              <span class="compact-assumption">Assumed schedule</span>
+              <span class="status-detail" id="compliance-detail"></span>
+            </div>
+            <div class="score-block">
+              <div><strong class="score" id="compliance-count">--</strong><span class="score-denominator"> / 12</span></div>
+              <span class="score-caption">lowest qualifying weeks <span class="muted">(8 needed)</span></span>
+              <span class="window-label" id="window-label"></span>
+            </div>
+            <div class="forecast-block">
+              <span class="status-label">Failing rolling windows</span>
+              <strong id="failure-count">--</strong>
+              <span class="forecast-result" id="global-first"></span>
+            </div>
+            <div class="inspect-block">
+              <button type="button" class="text-button" id="show-first-failure">Inspect first failure <span aria-hidden="true">&#8595;</span></button>
+              <button type="button" class="text-button" id="show-breakdown">Inspect a week <span aria-hidden="true">&#8595;</span></button>
+            </div>
+          </div>
+          <p class="dashboard-foot" id="global-scope">Checks the rolling 12-week window ending in every Monday&ndash;Sunday week that touches the displayed months, including the final week. Any failure makes this dashboard red. Days outside the grid use your schedule too.</p>
+        </section>
+      </div>
+
+      <div id="storage-error" class="message error-message" role="alert" hidden></div>
+
+      <section class="assumption-bar" aria-label="Schedule assumptions">
+        <span class="info-icon" aria-hidden="true">i</span>
+        <p><strong>This is a plan, not an attendance record.</strong> Unedited past and future days assume <strong id="pattern-summary">Mon, Tue, Wed in office</strong>. Your edits override the pattern.</p>
+        <span class="save-status" id="save-status" role="status">Saved on this device</span>
+      </section>
+
+      <section class="transfer-bar" aria-label="Export and import your plan">
+        <p>Your plan, portable. <span class="muted">Save a backup or move it to another browser.</span></p>
+        <div class="transfer-actions">
+          <button class="secondary-button" id="export-plan" type="button">Export JSON <span aria-hidden="true">&#8599;</span></button>
+          <button class="secondary-button" id="import-plan" type="button">Import JSON <span aria-hidden="true">&#8600;</span></button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden aria-label="Choose a plan JSON file">
+        </div>
+      </section>
+      <p id="transfer-error" class="message error-message" role="alert" hidden></p>
+
+      <details class="breakdown panel" id="breakdown">
+        <summary><span><span class="section-kicker">SECONDARY INSPECTION / DOES NOT OVERRIDE THE CALENDAR WARNING</span><strong>Inspect a rolling 12-week window</strong></span><span class="summary-note">Week by week <span class="chevron" aria-hidden="true">&#8964;</span></span></summary>
+        <div class="details-body">
+          <div class="inspection-controls">
+            <label for="as-of">Inspect as of <input type="date" id="as-of" min="1901-01-01" max="9998-10-01" required></label>
+            <button type="button" class="text-button" id="as-of-today">Today</button>
+            <strong id="inspection-status"></strong>
+          </div>
+          <p class="section-description">A week qualifies with at least 3 office weekdays. Extra days in one week never make up for a short week.</p>
+          <div id="week-breakdown" class="week-breakdown"></div>
+          <p class="small-note" id="breakdown-note"></p>
+        </div>
+      </details>
+
+      <section class="calendar-section" aria-labelledby="calendar-title" id="calendar" tabindex="-1">
+        <div class="calendar-heading">
+          <div><span class="section-kicker">YOUR DAYS, AT A GLANCE</span><h2 id="calendar-title">The long view.</h2><p id="calendar-range" class="section-description"></p></div>
+          <div class="calendar-actions">
+            <button class="secondary-button" id="jump-today" type="button">Jump to today <span aria-hidden="true">&#8600;</span></button>
+            <button class="secondary-button" id="undo" type="button" disabled><span aria-hidden="true">&#8630;</span> Undo</button>
+          </div>
+        </div>
+        <div class="calendar-meta">
+          <p>Click a weekday to toggle. Drag to paint on desktop.</p>
+          <div class="legend" aria-label="Calendar legend">
+            <span><i class="legend-swatch office-swatch"></i>Office</span>
+            <span><i class="legend-swatch remote-swatch"></i>WFH</span>
+            <span><i class="legend-swatch weekend-swatch"></i>Weekend</span>
+            <span><i class="legend-swatch today-swatch"></i>Today</span>
+            <span><i class="legend-swatch window-swatch"></i>12-week window</span>
+            <span><i class="legend-swatch failure-swatch"></i>Failing rolling window</span>
+          </div>
+        </div>
+        <div class="calendar-instructions"><span>Week totals include all weekdays, even across months.</span><span>Click a <strong>week total</strong> to inspect the rolling result after that week. <span class="edited-key">*</span> = edited day.</span></div>
+        <div class="months-grid" id="months"></div>
+        <div class="add-months-area">
+          <span class="timeline-line" aria-hidden="true"></span>
+          <button class="secondary-button add-months-button" id="add-months" type="button"><span aria-hidden="true">+</span> Add Months <span class="muted">/ 3 at a time</span></button>
+          <p id="range-end-note" class="small-note"></p>
+        </div>
+      </section>
+
+      <div class="bottom-panels">
+        <details class="settings panel" id="settings">
+          <summary><span><span class="section-kicker">START WITH A ROUTINE</span><strong>Your default office pattern</strong></span><span class="chevron" aria-hidden="true">&#8964;</span></summary>
+          <div class="details-body">
+            <p class="section-description">Applies to all unedited weekdays, past and future. Your explicit day edits stay exactly as you set them.</p>
+            <form id="pattern-form">
+              <fieldset class="pattern-options"><legend class="sr-only">Default office weekdays</legend>
+                <label><input type="checkbox" name="pattern" value="0" checked><span>Mon</span></label>
+                <label><input type="checkbox" name="pattern" value="1" checked><span>Tue</span></label>
+                <label><input type="checkbox" name="pattern" value="2" checked><span>Wed</span></label>
+                <label><input type="checkbox" name="pattern" value="3"><span>Thu</span></label>
+                <label><input type="checkbox" name="pattern" value="4"><span>Fri</span></label>
+              </fieldset>
+              <button class="secondary-button" type="submit">Apply pattern</button>
+            </form>
+            <p class="small-note" id="override-count"></p>
+          </div>
+        </details>
+        <details class="rules panel" id="rules">
+          <summary><span><span class="section-kicker">KEEP IT SIMPLE</span><strong>The 3 / 8 / 12 rule</strong></span><span class="chevron" aria-hidden="true">&#8964;</span></summary>
+          <div class="details-body">
+            <p><strong>3 office weekdays</strong> make a qualifying week. Weeks run Monday through Sunday; weekends never count.</p>
+            <p><strong>8 of the last 12 completed weeks</strong> must qualify. This is a count of qualifying weeks, not an average of office days.</p>
+            <p><strong>4 non-qualifying weeks</strong> can fit in a 12-week window. Boundary weeks with Mon&ndash;Wed and Wed&ndash;Fri attendance can create 34 consecutive days away, if every surrounding rolling window also passes.</p>
+            <p class="small-note">No holidays, leave exemptions, partial-day rules, or actual attendance records are included. Dates use civil calendar arithmetic with no timezone conversions.</p>
+          </div>
+        </details>
+      </div>
+    </main>
+
+    <footer class="page-footer"><span>office / away <span class="footer-divider">/</span> A clearer plan for your working days.</span><button type="button" class="text-button reset-button" id="reset">Reset planner</button></footer>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <dialog id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
+    <h2 id="reset-title">Start with a clean calendar?</h2>
+    <p id="reset-description">This removes every day edit and added month, restores the Mon/Tue/Wed office pattern, and returns the inspected date to today. This cannot be undone.</p>
+    <div class="dialog-actions"><button class="secondary-button" id="reset-cancel" type="button" autofocus>Keep my plan</button><button class="danger-button" id="reset-confirm" type="button">Reset planner</button></div>
+  </dialog>
+  <dialog id="import-dialog" aria-labelledby="import-title" aria-describedby="import-description">
+    <h2 id="import-title">Replace your current plan?</h2>
+    <p id="import-description"></p>
+    <p>Your current edits, default pattern, added months, and inspected date will be replaced. You can undo this import in this tab.</p>
+    <div class="dialog-actions"><button class="secondary-button" id="import-cancel" type="button" autofocus>Keep my plan</button><button class="primary-button" id="import-confirm" type="button">Replace plan</button></div>
+  </dialog>
+  <noscript><div class="noscript">This planner needs JavaScript to calculate and edit your schedule. Enable JavaScript, then reload this page. No data leaves your device.</div></noscript>
+</body>
+</html>
